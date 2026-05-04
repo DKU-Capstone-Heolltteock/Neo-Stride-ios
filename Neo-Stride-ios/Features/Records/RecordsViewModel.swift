@@ -71,7 +71,7 @@ final class RecordsViewModel: ObservableObject {
 }
 
 extension RecordsMonth {
-    static func current(calendar: Calendar = .current, date: Date = Date()) -> RecordsMonth {
+    nonisolated static func current(calendar: Calendar = .current, date: Date = Date()) -> RecordsMonth {
         let components = calendar.dateComponents([.year, .month], from: date)
         return RecordsMonth(year: components.year ?? 2026, month: components.month ?? 1)
     }
