@@ -1,0 +1,31 @@
+# Xcode
+.DS_Store
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build output
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# CocoaPods / Carthage
+Pods/
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# Environment / secrets
+.env
+*.xcconfig.local
