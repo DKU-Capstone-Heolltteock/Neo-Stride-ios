@@ -1,6 +1,6 @@
 import Foundation
 
-struct GpsTraceRequest: Codable, Equatable {
+struct GpsTraceRequest: Codable, Equatable, Hashable {
     let latitude: Double
     let longitude: Double
     let time: String

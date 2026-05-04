@@ -11,8 +11,11 @@ struct MainTabView: View {
             ))
             .tabItem { Label("러닝", systemImage: "figure.run") }
 
-            PlaceholderFeatureView(title: "Record", subtitle: "월별 러닝 기록은 Phase 4에서 구현합니다.")
-                .tabItem { Label("기록", systemImage: "calendar") }
+            RecordsView(viewModel: RecordsViewModel(
+                recordsService: RecordsService(apiClient: APIClient(config: sessionState.config, authStore: sessionState)),
+                authStore: sessionState
+            ))
+            .tabItem { Label("기록", systemImage: "calendar") }
 
             PlaceholderFeatureView(title: "Coaching", subtitle: "서버 기반 코칭 플랜은 Phase 5에서 구현합니다.")
                 .tabItem { Label("코칭", systemImage: "sparkles") }
