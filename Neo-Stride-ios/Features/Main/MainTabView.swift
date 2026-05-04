@@ -5,8 +5,11 @@ struct MainTabView: View {
 
     var body: some View {
         TabView {
-            PlaceholderFeatureView(title: "Running", subtitle: "자유 러닝 추적은 다음 단계에서 구현합니다.")
-                .tabItem { Label("러닝", systemImage: "figure.run") }
+            RunningView(viewModel: RunningViewModel(
+                runningService: RunningService(apiClient: APIClient(config: sessionState.config, authStore: sessionState)),
+                authStore: sessionState
+            ))
+            .tabItem { Label("러닝", systemImage: "figure.run") }
 
             PlaceholderFeatureView(title: "Record", subtitle: "월별 러닝 기록은 Phase 4에서 구현합니다.")
                 .tabItem { Label("기록", systemImage: "calendar") }
