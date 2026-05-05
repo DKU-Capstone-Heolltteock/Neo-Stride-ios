@@ -17,8 +17,11 @@ struct MainTabView: View {
             ))
             .tabItem { Label("기록", systemImage: "calendar") }
 
-            PlaceholderFeatureView(title: "Coaching", subtitle: "서버 기반 코칭 플랜은 Phase 5에서 구현합니다.")
-                .tabItem { Label("코칭", systemImage: "sparkles") }
+            CoachingView(viewModel: CoachingViewModel(
+                coachingService: CoachingService(apiClient: APIClient(config: sessionState.config, authStore: sessionState)),
+                authStore: sessionState
+            ))
+            .tabItem { Label("코칭", systemImage: "sparkles") }
 
             PlaceholderFeatureView(title: "Community", subtitle: "커뮤니티는 MVP 이후 확장합니다.")
                 .tabItem { Label("커뮤니티", systemImage: "person.3") }
