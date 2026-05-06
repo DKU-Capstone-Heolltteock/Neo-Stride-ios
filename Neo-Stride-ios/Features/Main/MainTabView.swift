@@ -23,7 +23,7 @@ struct MainTabView: View {
             ))
             .tabItem { Label("코칭", systemImage: "sparkles") }
 
-            PlaceholderFeatureView(title: "Community", subtitle: "커뮤니티는 MVP 이후 확장합니다.")
+            CommunityView(viewModel: CommunityViewModel())
                 .tabItem { Label("커뮤니티", systemImage: "person.3") }
         }
         .tint(NeoStrideColors.accent)
