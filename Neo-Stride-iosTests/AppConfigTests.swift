@@ -7,7 +7,7 @@ struct AppConfigTests {
         let config = AppConfig.default
 
         #expect(config.baseURL.scheme == "http" || config.baseURL.scheme == "https")
-        #expect(config.baseURL.absoluteString.hasSuffix("/"))
+        #expect(config.baseURL.absoluteString == "http://yuni2.iptime.org:8080/")
     }
 
     @Test func customBaseURLStringNormalizesTrailingSlash() throws {

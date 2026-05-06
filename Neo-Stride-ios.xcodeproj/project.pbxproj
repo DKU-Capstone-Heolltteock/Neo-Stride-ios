@@ -625,7 +625,7 @@
 				DEVELOPMENT_TEAM = JFW43XT5FH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_API_BASE_URL = "http://localhost:8080/";
+				INFOPLIST_KEY_API_BASE_URL = "http://yuni2.iptime.org:8080/";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "러닝 경로와 거리를 기록하기 위해 위치 권한이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -659,7 +659,7 @@
 				DEVELOPMENT_TEAM = JFW43XT5FH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_API_BASE_URL = "http://localhost:8080/";
+				INFOPLIST_KEY_API_BASE_URL = "http://yuni2.iptime.org:8080/";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "러닝 경로와 거리를 기록하기 위해 위치 권한이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

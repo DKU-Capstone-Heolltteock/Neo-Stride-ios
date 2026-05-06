@@ -9,7 +9,7 @@ struct AppConfig: Equatable {
             return config
         }
 
-        return try! AppConfig(baseURLString: "http://localhost:8080/")
+        return try! AppConfig(baseURLString: "http://yuni2.iptime.org:8080/")
     }()
 
     init(baseURLString: String) throws {
