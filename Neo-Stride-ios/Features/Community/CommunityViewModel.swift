@@ -7,19 +7,32 @@ final class CommunityViewModel: ObservableObject {
     @Published var selectedTipCategory: CommunityTipCategory = .all
     @Published var searchSection: CommunitySection = .feed
     @Published var searchText: String = ""
+    @Published var selectedFriendStatus: CommunityFriendStatus = .friends
+    @Published var profile: CommunityUserProfileResponse
+    @Published var badge: CommunityBadgeDetailResponse
 
     let feedItems: [CommunityFeedItem]
     let tipItems: [CommunityTipItem]
     let searchItems: [CommunitySearchItem]
+    let friendItems: [CommunityFriendSummary]
+    let myContents: [CommunityContentResponse]
 
     init(
         feedItems: [CommunityFeedItem] = CommunityFeedItem.samples,
         tipItems: [CommunityTipItem] = CommunityTipItem.samples,
-        searchItems: [CommunitySearchItem] = CommunitySearchItem.samples
+        searchItems: [CommunitySearchItem] = CommunitySearchItem.samples,
+        friendItems: [CommunityFriendSummary] = CommunityFriendSummary.samples,
+        myContents: [CommunityContentResponse] = CommunityContentResponse.samples,
+        profile: CommunityUserProfileResponse = .sample,
+        badge: CommunityBadgeDetailResponse = .sample
     ) {
         self.feedItems = feedItems
         self.tipItems = tipItems
         self.searchItems = searchItems
+        self.friendItems = friendItems
+        self.myContents = myContents
+        self.profile = profile
+        self.badge = badge
     }
 
     var filteredTips: [CommunityTipItem] {
@@ -51,6 +64,21 @@ final class CommunityViewModel: ObservableObject {
         }
     }
 
+    var filteredFriends: [CommunityFriendSummary] {
+        friendItems.filter { $0.status == selectedFriendStatus }
+    }
+
+    var myPageCounters: [(String, Int)] {
+        [
+            ("친구", profile.friendCount),
+            ("내 피드", profile.postCount),
+            ("태그", profile.taggedCount),
+            ("댓글", profile.commentedFeedCount),
+            ("좋아요", profile.likedFeedCount),
+            ("북마크", profile.bookmarkedFeedCount)
+        ]
+    }
+
     func selectSection(_ section: CommunitySection) {
         selectedSection = section
         if section.isBottomTab {
@@ -72,5 +100,9 @@ final class CommunityViewModel: ObservableObject {
 
     func selectSearchSection(_ section: CommunitySection) {
         searchSection = section
+    }
+
+    func selectFriendStatus(_ status: CommunityFriendStatus) {
+        selectedFriendStatus = status
     }
 }

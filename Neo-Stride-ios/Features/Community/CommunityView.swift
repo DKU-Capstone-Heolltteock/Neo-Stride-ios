@@ -21,23 +21,11 @@ struct CommunityView: View {
                     case .search:
                         searchContent
                     case .event:
-                        placeholderContent(
-                            icon: "gift",
-                            title: "이벤트",
-                            message: "커뮤니티 이벤트는 Android와 동일하게 화면 틀부터 준비했습니다."
-                        )
+                        eventContent
                     case .notification:
-                        placeholderContent(
-                            icon: "bell",
-                            title: "알림",
-                            message: "새 댓글, 좋아요, 친구 요청 알림이 이곳에 표시됩니다."
-                        )
+                        friendContent
                     case .myPage:
-                        placeholderContent(
-                            icon: "person.crop.circle",
-                            title: "마이페이지",
-                            message: "프로필, 내가 쓴 글, 친구 목록 화면으로 확장할 자리입니다."
-                        )
+                        myPageContent
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -180,6 +168,125 @@ struct CommunityView: View {
         }
     }
 
+    private var eventContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("러닝 이벤트")
+                    .font(.title2.bold())
+                    .foregroundStyle(NeoStrideColors.primaryText)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("주간 10km 챌린지", systemImage: "gift.fill")
+                        .font(.headline)
+                        .foregroundStyle(NeoStrideColors.primaryText)
+                    Text("Android event 브랜치는 main에 병합되어 별도 원격 델타가 없었습니다. iOS는 기존 이벤트 탭 골격을 유지하고 배지/친구/마이페이지 델타를 우선 반영했습니다.")
+                        .font(.subheadline)
+                        .foregroundStyle(NeoStrideColors.secondaryText)
+                }
+                .padding(16)
+                .background(NeoStrideColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            }
+            .padding(20)
+        }
+    }
+
+    private var friendContent: some View {
+        VStack(spacing: 0) {
+            friendStatusPicker
+
+            if viewModel.filteredFriends.isEmpty {
+                placeholderContent(icon: "person.2.slash", title: "친구 없음", message: "선택한 관계 상태의 러너가 없습니다.")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(viewModel.filteredFriends) { friend in
+                            FriendRow(friend: friend)
+                                .padding(.horizontal, 20)
+                        }
+                    }
+                    .padding(.vertical, 16)
+                }
+            }
+        }
+    }
+
+    private var friendStatusPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(CommunityFriendStatus.allCases) { status in
+                    Button {
+                        viewModel.selectFriendStatus(status)
+                    } label: {
+                        Text(status.title)
+                            .font(.subheadline.bold())
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(viewModel.selectedFriendStatus == status ? NeoStrideColors.background : NeoStrideColors.primaryText)
+                            .background(viewModel.selectedFriendStatus == status ? NeoStrideColors.accent : NeoStrideColors.surface)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+    }
+
+    private var myPageContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(NeoStrideColors.accent)
+                            .frame(width: 56, height: 56)
+                            .overlay(Text(String(viewModel.profile.nickname.prefix(1))).font(.title2.bold()).foregroundStyle(NeoStrideColors.background))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(viewModel.profile.nickname)
+                                .font(.title2.bold())
+                                .foregroundStyle(NeoStrideColors.primaryText)
+                            Text(viewModel.profile.statusMessage ?? "상태 메시지를 입력해보세요")
+                                .font(.subheadline)
+                                .foregroundStyle(NeoStrideColors.secondaryText)
+                        }
+                    }
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 10) {
+                        ForEach(viewModel.myPageCounters, id: \.0) { item in
+                            VStack(spacing: 4) {
+                                Text("\(item.1)")
+                                    .font(.headline.bold())
+                                    .foregroundStyle(NeoStrideColors.primaryText)
+                                Text(item.0)
+                                    .font(.caption)
+                                    .foregroundStyle(NeoStrideColors.secondaryText)
+                            }
+                            .padding(10)
+                            .frame(maxWidth: .infinity)
+                            .background(NeoStrideColors.elevatedSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                }
+                .padding(16)
+                .background(NeoStrideColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                BadgeSummaryCard(badge: viewModel.badge)
+
+                Text("내 활동")
+                    .font(.headline)
+                    .foregroundStyle(NeoStrideColors.primaryText)
+
+                ForEach(viewModel.myContents) { content in
+                    MyContentRow(content: content)
+                }
+            }
+            .padding(20)
+        }
+    }
+
     private var tipCategoryPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -294,6 +401,12 @@ private struct FeedCard: View {
                 .font(.title3.bold())
                 .foregroundStyle(NeoStrideColors.primaryText)
 
+            if !item.content.isEmpty {
+                Text(item.content)
+                    .font(.subheadline)
+                    .foregroundStyle(NeoStrideColors.secondaryText)
+            }
+
             HStack(spacing: 10) {
                 metric(title: "거리", value: item.distanceText)
                 metric(title: "시간", value: item.durationText)
@@ -304,7 +417,9 @@ private struct FeedCard: View {
                 Label("\(item.likeCount)", systemImage: "heart")
                 Label("\(item.commentCount)", systemImage: "bubble.right")
                 Spacer()
-                Image(systemName: "map")
+                if item.isMapVisible {
+                    Image(systemName: "map")
+                }
             }
             .font(.caption.bold())
             .foregroundStyle(NeoStrideColors.secondaryText)
@@ -383,5 +498,86 @@ private struct SearchResultRow: View {
         .padding(14)
         .background(NeoStrideColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+private struct FriendRow: View {
+    let friend: CommunityFriendSummary
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(NeoStrideColors.elevatedSurface)
+                .frame(width: 42, height: 42)
+                .overlay(Text(String(friend.nickname.prefix(1))).font(.headline.bold()).foregroundStyle(NeoStrideColors.accent))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(friend.nickname)
+                    .font(.headline)
+                    .foregroundStyle(NeoStrideColors.primaryText)
+                Text("\(friend.badgeTier.uppercased()) · 친구 \(friend.friendCount)")
+                    .font(.caption)
+                    .foregroundStyle(NeoStrideColors.secondaryText)
+            }
+            Spacer()
+            Text(friend.status.title)
+                .font(.caption.bold())
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .foregroundStyle(NeoStrideColors.background)
+                .background(NeoStrideColors.accent)
+                .clipShape(Capsule())
+        }
+        .padding(14)
+        .background(NeoStrideColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+private struct BadgeSummaryCard: View {
+    let badge: CommunityBadgeDetailResponse
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "medal.fill")
+                .font(.largeTitle)
+                .foregroundStyle(NeoStrideColors.warning)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("대표 배지")
+                    .font(.caption)
+                    .foregroundStyle(NeoStrideColors.secondaryText)
+                Text(badge.badgeTier.title)
+                    .font(.title3.bold())
+                    .foregroundStyle(NeoStrideColors.primaryText)
+                Text("\(badge.distance, specifier: "%.1f")km · \(badge.pace)")
+                    .font(.caption)
+                    .foregroundStyle(NeoStrideColors.secondaryText)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(NeoStrideColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+}
+
+private struct MyContentRow: View {
+    let content: CommunityContentResponse
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(content.contentText)
+                .font(.headline)
+                .foregroundStyle(NeoStrideColors.primaryText)
+            HStack {
+                Label("\(content.totalDistance, specifier: "%.1f")km", systemImage: "figure.run")
+                Label("\(content.duration)s", systemImage: "timer")
+                Label("\(content.pace)s/km", systemImage: "speedometer")
+            }
+            .font(.caption)
+            .foregroundStyle(NeoStrideColors.secondaryText)
+        }
+        .padding(14)
+        .background(NeoStrideColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }

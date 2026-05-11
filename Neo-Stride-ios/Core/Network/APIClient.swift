@@ -1,5 +1,7 @@
 import Foundation
 
+struct EmptyResponse: Decodable {}
+
 final class APIClient {
     private let config: AppConfig
     private let authStore: AuthStore
@@ -23,6 +25,26 @@ final class APIClient {
     func send<Request: Encodable, Response: Decodable>(_ endpoint: APIEndpoint, body: Request) async throws -> Response {
         let data = try encoder.encode(body)
         let request = try makeRequest(endpoint: endpoint, body: data)
+        return try await perform(request)
+    }
+
+    func sendMultipart<Response: Decodable>(
+        _ endpoint: APIEndpoint,
+        fieldName: String,
+        fileName: String,
+        mimeType: String,
+        data: Data
+    ) async throws -> Response {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n")
+        body.append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n")
+
+        var request = try makeRequest(endpoint: endpoint, body: body)
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         return try await perform(request)
     }
 
@@ -52,6 +74,9 @@ final class APIClient {
 
             switch httpResponse.statusCode {
             case 200..<300:
+                if data.isEmpty, Response.self == EmptyResponse.self {
+                    return EmptyResponse() as! Response
+                }
                 do {
                     return try decoder.decode(Response.self, from: data)
                 } catch {
@@ -69,6 +94,14 @@ final class APIClient {
             throw error
         } catch {
             throw APIError.network(error.localizedDescription)
+        }
+    }
+}
+
+private extension Data {
+    mutating func append(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
         }
     }
 }

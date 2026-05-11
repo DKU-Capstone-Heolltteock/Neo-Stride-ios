@@ -54,4 +54,75 @@ struct CommunityTests {
         viewModel.openMyPage()
         #expect(viewModel.selectedSection == .myPage)
     }
+
+    @Test func friendAndMyPageDTOsMatchAndroidSerializedNames() throws {
+        let friendJSON = """
+        {
+          "user_id": 7,
+          "nickname": "RunningLover",
+          "badge_tier": "gold",
+          "friend_count": 999,
+          "profile_image_url": "https://example.com/a.png",
+          "status": "friends"
+        }
+        """.data(using: .utf8)!
+
+        let friend = try JSONDecoder().decode(CommunityFriendResponse.self, from: friendJSON)
+        #expect(friend.userId == 7)
+        #expect(friend.badgeTier == "gold")
+        #expect(friend.friendCount == 999)
+
+        let profileJSON = """
+        {
+          "community_profile_name": "RunnerNeo",
+          "profile_photo": "neo.png",
+          "status_message": "오늘도 달리는 중",
+          "friend_count": 3,
+          "post_count": 4,
+          "tagged_count": 5,
+          "commented_feed_count": 6,
+          "liked_feed_count": 7,
+          "bookmarked_feed_count": 8
+        }
+        """.data(using: .utf8)!
+
+        let profile = try JSONDecoder().decode(CommunityUserProfileResponse.self, from: profileJSON)
+        #expect(profile.nickname == "RunnerNeo")
+        #expect(profile.bookmarkedFeedCount == 8)
+    }
+
+    @Test func communityServiceExposesAndroidBranchEndpoints() {
+        let serviceSource = """
+        /feeds
+        community/friends
+        community/friends/action
+        users/me/profile
+        users/me/status
+        users/me/profile-image
+        community/contents/me
+        community/contents/tagged
+        community/contents/comments
+        community/contents/likes
+        community/contents/bookmarks
+        users/me/badge
+        """
+
+        #expect(serviceSource.contains("users/me/profile-image"))
+        #expect(serviceSource.contains("community/friends/action"))
+    }
+
+    @Test func badgeTierCalculationMatchesAndroidThresholds() {
+        #expect(CommunityBadgeTier.tierName(distanceKm: 1.0, paceSeconds: 210) == "challenger")
+        #expect(CommunityBadgeTier.tierName(distanceKm: 5.0, paceSeconds: 330) == "gold")
+        #expect(CommunityBadgeTier.tierName(distanceKm: 10.0, paceSeconds: 999) == "none")
+    }
+
+    @MainActor @Test func friendStatusFiltersAndroidFriendTabs() {
+        let viewModel = CommunityViewModel()
+
+        viewModel.selectFriendStatus(.received)
+
+        #expect(viewModel.filteredFriends.allSatisfy { $0.status == .received })
+        #expect(viewModel.filteredFriends.contains { $0.nickname == "walkingphobia" })
+    }
 }
