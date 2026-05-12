@@ -3,7 +3,7 @@ import SwiftUI
 struct CommunityView: View {
     @StateObject private var viewModel: CommunityViewModel
 
-    init(viewModel: CommunityViewModel = CommunityViewModel()) {
+    init(viewModel: CommunityViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
@@ -35,6 +35,12 @@ struct CommunityView: View {
             .background(NeoStrideColors.background.ignoresSafeArea())
             .navigationTitle("커뮤니티")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $viewModel.isFeedComposerPresented) {
+                FeedComposerSheet(viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.isStatusEditorPresented) {
+                StatusEditorSheet(viewModel: viewModel)
+            }
         }
     }
 
@@ -78,6 +84,7 @@ struct CommunityView: View {
                         .foregroundStyle(NeoStrideColors.primaryText)
                     Spacer()
                     Button {
+                        viewModel.beginFeedCompose()
                     } label: {
                         Label("글쓰기", systemImage: "square.and.pencil")
                             .font(.subheadline.bold())
@@ -201,7 +208,23 @@ struct CommunityView: View {
                 ScrollView {
                     LazyVStack(spacing: 10) {
                         ForEach(viewModel.filteredFriends) { friend in
-                            FriendRow(friend: friend)
+                            FriendRow(
+                                friend: friend,
+                                primaryAction: viewModel.primaryAction(for: friend.status),
+                                secondaryAction: viewModel.secondaryAction(for: friend.status),
+                                onPrimaryAction: { action in
+                                    Task { await viewModel.perform(action, for: friend) }
+                                },
+                                onSecondaryAction: { action in
+                                    Task { await viewModel.perform(action, for: friend) }
+                                }
+                            )
+                                .padding(.horizontal, 20)
+                        }
+                        if let message = viewModel.relationshipErrorMessage {
+                            Text(message)
+                                .font(.caption)
+                                .foregroundStyle(.red)
                                 .padding(.horizontal, 20)
                         }
                     }
@@ -246,9 +269,14 @@ struct CommunityView: View {
                             Text(viewModel.profile.nickname)
                                 .font(.title2.bold())
                                 .foregroundStyle(NeoStrideColors.primaryText)
-                            Text(viewModel.profile.statusMessage ?? "상태 메시지를 입력해보세요")
-                                .font(.subheadline)
-                                .foregroundStyle(NeoStrideColors.secondaryText)
+                            Button {
+                                viewModel.beginStatusEdit()
+                            } label: {
+                                Text(viewModel.profile.statusMessage ?? "상태 메시지를 입력해보세요")
+                                    .font(.subheadline)
+                                    .foregroundStyle(NeoStrideColors.secondaryText)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
 
@@ -275,15 +303,48 @@ struct CommunityView: View {
 
                 BadgeSummaryCard(badge: viewModel.badge)
 
-                Text("내 활동")
-                    .font(.headline)
-                    .foregroundStyle(NeoStrideColors.primaryText)
+                HStack {
+                    Text("내 활동")
+                        .font(.headline)
+                        .foregroundStyle(NeoStrideColors.primaryText)
+                    Spacer()
+                    Text("\(viewModel.count(for: viewModel.selectedActivityFilter))")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(NeoStrideColors.accent)
+                }
 
-                ForEach(viewModel.myContents) { content in
+                activityFilterPicker
+
+                if viewModel.isLoadingActivity {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                }
+
+                ForEach(viewModel.filteredMyContents) { content in
                     MyContentRow(content: content)
                 }
             }
             .padding(20)
+        }
+    }
+
+    private var activityFilterPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(CommunityActivityFilter.allCases) { filter in
+                    Button {
+                        Task { await viewModel.selectAndLoadActivityFilter(filter) }
+                    } label: {
+                        Text(filter.title)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(viewModel.selectedActivityFilter == filter ? NeoStrideColors.background : NeoStrideColors.primaryText)
+                            .background(viewModel.selectedActivityFilter == filter ? NeoStrideColors.accent : NeoStrideColors.surface)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
         }
     }
 
@@ -370,6 +431,90 @@ struct CommunityView: View {
                 .padding(.horizontal, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct FeedComposerSheet: View {
+    @ObservedObject var viewModel: CommunityViewModel
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("피드 내용") {
+                    TextField("제목", text: $viewModel.feedDraft.title)
+                    TextField("내용", text: $viewModel.feedDraft.content, axis: .vertical)
+                        .lineLimit(4, reservesSpace: true)
+                }
+
+                Section("공개 범위") {
+                    Picker("공개 범위", selection: $viewModel.feedDraft.privacy) {
+                        ForEach(CommunityFeedPrivacy.allCases) { privacy in
+                            Text(privacy.title).tag(privacy)
+                        }
+                    }
+                    Toggle("지도 표시", isOn: $viewModel.feedDraft.mapVisible)
+                    Stepper("태그 \(viewModel.feedDraft.tagCount)명", value: $viewModel.feedDraft.tagCount, in: 0...20)
+                    Text("Android feed 브랜치와 동일하게 privacy, mapVisible, routeMapImageUri, taggedUserIds, imageUrls를 업로드 요청에 포함합니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let message = viewModel.feedDraft.errorMessage {
+                    Section {
+                        Text(message)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("피드 작성")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") {
+                        viewModel.isFeedComposerPresented = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("완료") {
+                        Task { await viewModel.publishDraftFeed() }
+                    }
+                    .disabled(viewModel.isPublishingFeed)
+                }
+            }
+        }
+    }
+}
+
+private struct StatusEditorSheet: View {
+    @ObservedObject var viewModel: CommunityViewModel
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("상태 메시지") {
+                    TextField("상태 메시지", text: $viewModel.editedStatusMessage, axis: .vertical)
+                        .lineLimit(3, reservesSpace: true)
+                    Text("\(viewModel.editedStatusMessage.count)/30")
+                        .font(.caption)
+                        .foregroundStyle(viewModel.editedStatusMessage.count > 30 ? .red : .secondary)
+                }
+            }
+            .navigationTitle("프로필 수정")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") {
+                        viewModel.isStatusEditorPresented = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("저장") {
+                        viewModel.saveEditedStatusMessage()
+                    }
+                    .disabled(viewModel.editedStatusMessage.count > 30)
+                }
+            }
+        }
     }
 }
 
@@ -503,6 +648,10 @@ private struct SearchResultRow: View {
 
 private struct FriendRow: View {
     let friend: CommunityFriendSummary
+    let primaryAction: CommunityFriendAction?
+    let secondaryAction: CommunityFriendAction?
+    let onPrimaryAction: (CommunityFriendAction) -> Void
+    let onSecondaryAction: (CommunityFriendAction) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -519,13 +668,29 @@ private struct FriendRow: View {
                     .foregroundStyle(NeoStrideColors.secondaryText)
             }
             Spacer()
-            Text(friend.status.title)
-                .font(.caption.bold())
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .foregroundStyle(NeoStrideColors.background)
-                .background(NeoStrideColors.accent)
-                .clipShape(Capsule())
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(friend.status.title)
+                    .font(.caption.bold())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .foregroundStyle(NeoStrideColors.background)
+                    .background(NeoStrideColors.accent)
+                    .clipShape(Capsule())
+                if let primaryAction {
+                    Button(primaryAction.title) {
+                        onPrimaryAction(primaryAction)
+                    }
+                    .font(.caption2.bold())
+                    .foregroundStyle(NeoStrideColors.accent)
+                }
+                if let secondaryAction {
+                    Button(secondaryAction.title) {
+                        onSecondaryAction(secondaryAction)
+                    }
+                    .font(.caption2.bold())
+                    .foregroundStyle(NeoStrideColors.secondaryText)
+                }
+            }
         }
         .padding(14)
         .background(NeoStrideColors.surface)

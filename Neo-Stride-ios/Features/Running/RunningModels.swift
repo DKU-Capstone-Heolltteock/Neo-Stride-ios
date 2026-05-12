@@ -15,6 +15,7 @@ struct RunningRecordRequest: Encodable, Equatable {
     let calories: Double
     let routeDetail: String
     let gpsTraces: [GpsTraceRequest]
+    let badge: String?
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -25,6 +26,7 @@ struct RunningRecordRequest: Encodable, Equatable {
         case calories
         case routeDetail = "route_detail"
         case gpsTraces = "gps_traces"
+        case badge
     }
 
     func encode(to encoder: Encoder) throws {
@@ -37,6 +39,7 @@ struct RunningRecordRequest: Encodable, Equatable {
         try container.encode(calories, forKey: .calories)
         try container.encode(routeDetail, forKey: .routeDetail)
         try container.encode(gpsTraces, forKey: .gpsTraces)
+        try container.encodeIfPresent(badge, forKey: .badge)
     }
 }
 

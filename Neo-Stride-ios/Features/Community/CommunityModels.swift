@@ -62,6 +62,36 @@ enum CommunityTipCategory: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
+enum CommunityFeedPrivacy: String, CaseIterable, Identifiable, Hashable {
+    case `private` = "PRIVATE"
+    case friend = "FRIEND"
+    case badgeHolder = "BADGE_HOLDER"
+    case `public` = "PUBLIC"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .private: return "나만 보기"
+        case .friend: return "친구"
+        case .badgeHolder: return "배지홀더"
+        case .public: return "전체"
+        }
+    }
+}
+
+struct CommunityTagUser: Identifiable, Codable, Equatable, Hashable {
+    let userId: Int
+    let nickname: String
+
+    var id: Int { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case userId
+        case nickname
+    }
+}
+
 struct CommunityFeedItem: Identifiable, Equatable, Hashable {
     let id: UUID
     let username: String
@@ -130,6 +160,40 @@ struct CommunityFeedItem: Identifiable, Equatable, Hashable {
             paceText: "4:46/km"
         )
     ]
+}
+
+extension CommunityFeedItem {
+    init(uploadRequest request: CommunityFeedUploadRequest, username: String) {
+        self.init(
+            username: username,
+            timeText: "방금 전",
+            title: request.title,
+            content: request.content,
+            tagCount: request.tagCount,
+            likeCount: 0,
+            commentCount: 0,
+            distanceText: String(format: "%.1fkm", request.distance),
+            durationText: request.runningTime,
+            paceText: request.pace,
+            isMapVisible: request.mapVisible
+        )
+    }
+
+    init(uploadResponse response: CommunityFeedUploadResponse) {
+        self.init(
+            username: response.nickname,
+            timeText: "방금 전",
+            title: response.title,
+            content: response.content,
+            tagCount: response.taggedCount,
+            likeCount: response.likeCount,
+            commentCount: response.commentCount,
+            distanceText: response.distance,
+            durationText: response.duration,
+            paceText: response.pace,
+            isMapVisible: response.mapVisible
+        )
+    }
 }
 
 struct CommunitySearchItem: Identifiable, Equatable, Hashable {
@@ -204,6 +268,46 @@ enum CommunityFriendStatus: String, CaseIterable, Identifiable, Hashable, Codabl
         case .sent: return "보낸 요청"
         case .received: return "받은 요청"
         case .blocked: return "차단"
+        }
+    }
+}
+
+enum CommunityFriendAction: String, CaseIterable, Identifiable, Hashable {
+    case cancel
+    case accept
+    case reject
+    case block
+    case unblock
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .cancel: return "요청 취소"
+        case .accept: return "수락"
+        case .reject: return "거절"
+        case .block: return "차단"
+        case .unblock: return "차단 해제"
+        }
+    }
+}
+
+enum CommunityActivityFilter: String, CaseIterable, Identifiable, Hashable {
+    case myFeeds = "me"
+    case tagged = "tagged"
+    case comments = "comments"
+    case likes = "likes"
+    case bookmarks = "bookmarks"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .myFeeds: return "내가 쓴 피드"
+        case .tagged: return "나를 태그한 피드"
+        case .comments: return "내가 쓴 댓글"
+        case .likes: return "내가 한 좋아요"
+        case .bookmarks: return "내가 한 북마크"
         }
     }
 }
@@ -467,6 +571,35 @@ struct CommunityFeedUploadRequest: Encodable, Equatable, Hashable {
     }
 }
 
+extension CommunityFeedUploadRequest {
+    init(
+        title: String,
+        content: String,
+        privacy: CommunityFeedPrivacy,
+        mapVisible: Bool,
+        routeMapImageURI: String?,
+        taggedUsers: [CommunityTagUser],
+        imageURLs: [String],
+        distance: Double,
+        runningTime: String,
+        pace: String
+    ) {
+        self.init(
+            title: title,
+            content: content,
+            privacy: privacy.rawValue,
+            mapVisible: mapVisible,
+            routeMapImageURI: routeMapImageURI,
+            taggedUserIds: taggedUsers.map(\.userId),
+            imageURLs: imageURLs,
+            distance: distance,
+            runningTime: runningTime,
+            pace: pace,
+            tagCount: taggedUsers.count
+        )
+    }
+}
+
 struct CommunityFeedUploadResponse: Decodable, Equatable, Hashable, Identifiable {
     let feedId: Int
     let profileImageURL: String?
@@ -502,6 +635,40 @@ struct CommunityFeedUploadResponse: Decodable, Equatable, Hashable, Identifiable
         case mapVisible
         case routeMapImageURI = "routeMapImageUri"
         case imageURLs = "imageUrls"
+    }
+
+    init(
+        feedId: Int,
+        profileImageURL: String? = nil,
+        nickname: String,
+        createdAt: String,
+        title: String,
+        content: String,
+        taggedCount: Int,
+        likeCount: Int,
+        commentCount: Int,
+        distance: String,
+        duration: String,
+        pace: String,
+        mapVisible: Bool,
+        routeMapImageURI: String?,
+        imageURLs: [String]
+    ) {
+        self.feedId = feedId
+        self.profileImageURL = profileImageURL
+        self.nickname = nickname
+        self.createdAt = createdAt
+        self.title = title
+        self.content = content
+        self.taggedCount = taggedCount
+        self.likeCount = likeCount
+        self.commentCount = commentCount
+        self.distance = distance
+        self.duration = duration
+        self.pace = pace
+        self.mapVisible = mapVisible
+        self.routeMapImageURI = routeMapImageURI
+        self.imageURLs = imageURLs
     }
 
     init(from decoder: Decoder) throws {

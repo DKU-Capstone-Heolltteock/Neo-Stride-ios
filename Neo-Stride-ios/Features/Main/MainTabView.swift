@@ -23,7 +23,9 @@ struct MainTabView: View {
             ))
             .tabItem { Label("코칭", systemImage: "sparkles") }
 
-            CommunityView(viewModel: CommunityViewModel())
+            CommunityView(viewModel: CommunityViewModel(
+                communityService: CommunityService(apiClient: APIClient(config: sessionState.config, authStore: sessionState))
+            ))
                 .tabItem { Label("커뮤니티", systemImage: "person.3") }
         }
         .tint(NeoStrideColors.accent)

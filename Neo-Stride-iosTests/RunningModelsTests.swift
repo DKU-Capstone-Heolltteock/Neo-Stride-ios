@@ -12,7 +12,8 @@ struct RunningModelsTests {
             pace: 6.36,
             calories: 235.69,
             routeDetail: "",
-            gpsTraces: [GpsTraceRequest(latitude: 37.5665, longitude: 126.978, time: "2026-04-28 09:30:12")]
+            gpsTraces: [GpsTraceRequest(latitude: 37.5665, longitude: 126.978, time: "2026-04-28 09:30:12")],
+            badge: "silver"
         )
 
         let data = try JSONEncoder().encode(request)
@@ -21,6 +22,8 @@ struct RunningModelsTests {
         #expect(object["user_id"] as? Int == 1)
         #expect(object["plan_id"] is NSNull)
         #expect(object["total_distance"] as? Double == 3.25)
+        #expect(object["pace"] as? Double == 6.36)
+        #expect(object["badge"] as? String == "silver")
         #expect(object["route_detail"] as? String == "")
         #expect(object["gps_traces"] != nil)
     }

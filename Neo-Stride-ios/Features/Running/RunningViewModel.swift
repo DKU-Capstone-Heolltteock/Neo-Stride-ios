@@ -97,7 +97,11 @@ final class RunningViewModel: ObservableObject {
                 pace: rounded(summary.paceMinutesPerKilometer),
                 calories: rounded(summary.calories),
                 routeDetail: "",
-                gpsTraces: summary.route.map(Self.gpsTrace)
+                gpsTraces: summary.route.map(Self.gpsTrace),
+                badge: CommunityBadgeTier.tierName(
+                    distanceKm: summary.distanceKilometers,
+                    paceSeconds: paceSeconds(from: summary.paceMinutesPerKilometer)
+                )
             )
             let response = try await runningService.saveRunningRecord(request)
             savedRecordId = response.runRecordId
@@ -116,7 +120,9 @@ final class RunningViewModel: ObservableObject {
     private func startTimer() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refreshSummary() }
+            Task { @MainActor [weak self] in
+                self?.refreshSummary()
+            }
         }
     }
 
@@ -126,6 +132,10 @@ final class RunningViewModel: ObservableObject {
 
     private func rounded(_ value: Double) -> Double {
         (value * 100).rounded() / 100
+    }
+
+    private func paceSeconds(from minutesPerKilometer: Double) -> Int {
+        Int((minutesPerKilometer * 60).rounded())
     }
 
     private static func gpsTrace(from sample: RunningLocationSample) -> GpsTraceRequest {
