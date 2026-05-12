@@ -17,6 +17,7 @@ struct RunningView: View {
                 VStack(spacing: 16) {
                     metricsPanel
                     controls
+                    watchImportPanel
                 }
                 .padding(20)
                 .background(.ultraThinMaterial)
@@ -47,6 +48,9 @@ struct RunningView: View {
                 if let message {
                     viewModel.setError(message)
                 }
+            }
+            .onAppear {
+                viewModel.loadPendingWatchSummaries()
             }
         }
     }
@@ -106,6 +110,62 @@ struct RunningView: View {
             case .saving:
                 ProgressView("저장 중...")
                     .tint(NeoStrideColors.accent)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var watchImportPanel: some View {
+        if !viewModel.pendingWatchSummaries.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("워치 기록")
+                    .font(.headline)
+                    .foregroundStyle(NeoStrideColors.primaryText)
+
+                ForEach(viewModel.pendingWatchSummaries.prefix(3)) { summary in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(summary.startedAt, style: .date)
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(NeoStrideColors.primaryText)
+                                Text("\(String(format: "%.2f km", summary.distanceKilometers)) · \(formattedDuration(summary.durationSeconds)) · \(String(format: "%.2f /km", summary.averagePaceMinutesPerKilometer))")
+                                    .font(.caption)
+                                    .foregroundStyle(NeoStrideColors.secondaryText)
+                            }
+                            Spacer()
+                            if viewModel.savingWatchSummaryId == summary.id {
+                                ProgressView()
+                                    .tint(NeoStrideColors.accent)
+                            } else {
+                                Button("저장") {
+                                    Task { await viewModel.saveWatchSummary(summary) }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                            }
+                        }
+
+                        HStack(spacing: 12) {
+                            Text("심박 \(Int(summary.averageHeartRate.rounded())) bpm")
+                            if let cadence = summary.averageCadenceStepsPerMinute {
+                                Text("케이던스 \(Int(cadence.rounded())) spm")
+                            }
+                            Text("GPS \(summary.gpsTraces.count)")
+                            Spacer()
+                            Button("삭제") {
+                                viewModel.discardWatchSummary(id: summary.id)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(NeoStrideColors.secondaryText)
+                    }
+                    .padding(12)
+                    .background(NeoStrideColors.surface.opacity(0.88))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
             }
         }
     }

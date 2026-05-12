@@ -4,6 +4,30 @@ struct GpsTraceRequest: Codable, Equatable, Hashable {
     let latitude: Double
     let longitude: Double
     let time: String
+    let heartRate: Double?
+    let cadence: Double?
+
+    init(
+        latitude: Double,
+        longitude: Double,
+        time: String,
+        heartRate: Double? = nil,
+        cadence: Double? = nil
+    ) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.time = time
+        self.heartRate = heartRate
+        self.cadence = cadence
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case latitude
+        case longitude
+        case time
+        case heartRate = "heart_rate"
+        case cadence
+    }
 }
 
 struct RunningRecordRequest: Encodable, Equatable {

@@ -16,15 +16,29 @@ final class RunningViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published private(set) var savedRecordId: Int?
     @Published private(set) var didSaveRecord = false
+    @Published private(set) var pendingWatchSummaries: [WatchWorkoutPendingSummary] = []
+    @Published private(set) var savingWatchSummaryId: WatchWorkoutPendingSummary.ID?
 
     private let runningService: RunningService
     private let authStore: AuthStore
+    private let watchWorkoutStore: WatchWorkoutStore
     private var calculator = RunningMetricsCalculator()
     private var timer: Timer?
 
-    init(runningService: RunningService, authStore: AuthStore) {
+    init(
+        runningService: RunningService,
+        authStore: AuthStore,
+        watchWorkoutStore: WatchWorkoutStore = .shared
+    ) {
         self.runningService = runningService
         self.authStore = authStore
+        self.watchWorkoutStore = watchWorkoutStore
+        do {
+            self.pendingWatchSummaries = try watchWorkoutStore.pendingSummaries()
+        } catch {
+            self.pendingWatchSummaries = []
+            self.errorMessage = Self.userFacingMessage(for: error)
+        }
     }
 
     func start() {
@@ -108,8 +122,49 @@ final class RunningViewModel: ObservableObject {
             didSaveRecord = true
             state = .ready
         } catch {
-            errorMessage = "러닝 기록 저장 실패"
+            errorMessage = Self.userFacingMessage(for: error)
             state = .result
+        }
+    }
+
+    func loadPendingWatchSummaries() {
+        do {
+            pendingWatchSummaries = try watchWorkoutStore.pendingSummaries()
+        } catch {
+            pendingWatchSummaries = []
+            errorMessage = Self.userFacingMessage(for: error)
+        }
+    }
+
+    func saveWatchSummary(_ summary: WatchWorkoutPendingSummary) async {
+        guard savingWatchSummaryId == nil else { return }
+        guard let userId = authStore.userId else {
+            errorMessage = "사용자 정보를 찾을 수 없습니다."
+            return
+        }
+
+        savingWatchSummaryId = summary.id
+        errorMessage = nil
+
+        do {
+            let response = try await runningService.saveRunningRecord(summary.makeRunningRecordRequest(userId: userId))
+            try watchWorkoutStore.remove(id: summary.id)
+            pendingWatchSummaries = try watchWorkoutStore.pendingSummaries()
+            savedRecordId = response.runRecordId
+            didSaveRecord = true
+        } catch {
+            errorMessage = Self.userFacingMessage(for: error)
+        }
+
+        savingWatchSummaryId = nil
+    }
+
+    func discardWatchSummary(id: WatchWorkoutPendingSummary.ID) {
+        do {
+            try watchWorkoutStore.remove(id: id)
+            pendingWatchSummaries = try watchWorkoutStore.pendingSummaries()
+        } catch {
+            errorMessage = Self.userFacingMessage(for: error)
         }
     }
 
@@ -140,6 +195,29 @@ final class RunningViewModel: ObservableObject {
 
     private static func gpsTrace(from sample: RunningLocationSample) -> GpsTraceRequest {
         GpsTraceRequest(latitude: sample.latitude, longitude: sample.longitude, time: gpsDateFormatter.string(from: sample.timestamp))
+    }
+
+    private static func userFacingMessage(for error: Error) -> String {
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .unauthorized:
+                return "로그인이 만료되었습니다. 다시 로그인해 주세요."
+            case .network:
+                return "네트워크 연결을 확인한 뒤 다시 시도해 주세요."
+            case .serverError(let statusCode, _):
+                return "서버 오류로 러닝 기록을 저장하지 못했습니다. (\(statusCode))"
+            case .decoding:
+                return "서버 응답을 처리하지 못했습니다."
+            case .invalidURL, .missingResponse:
+                return "요청을 처리하지 못했습니다."
+            }
+        }
+
+        if let storeError = error as? WatchWorkoutStoreError {
+            return storeError.localizedDescription
+        }
+
+        return "러닝 기록을 처리하지 못했습니다."
     }
 
     private static let gpsDateFormatter: DateFormatter = {
